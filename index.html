@@ -3,242 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finance Tracker SPA</title>
+    <title>HTML/CSS Playground</title>
+    <link rel="stylesheet" href="style.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen font-sans">
+    <body>
+        <div class="test-box">
+            <h1>HTML/CSS Playground</h1>
+            <p>Welcome to the playground!</p>
+        </div>
+        <div class="test-div">
+            <button class="button">Login</button>
+            <button class="button">Login</button>
+            <button class="button">Login</button>
+            <button class="button">Login</button>
+        </div>
+        <div class="center">
+            <div class="fab-container">
+                <button class="button1" id="button1">+</button>
+                <button class="mini-button" id="miniButton1">❤</button>
+                <button class="mini-button" id="miniButton2">❤</button>
+                <button class="mini-button" id="miniButton3">❤</button>
+                <button class="mini-button" id="miniButton4">❤</button>
+                <button class="mini-button" id="miniButton5">❤</button>
 
-    <div class="max-w-4xl mx-auto p-4 sm:p-6">
-        <header class="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
-            <h1 class="text-2xl font-bold text-teal-400">💰 LedgerFlow Solo</h1>
-            <span class="bg-gray-800 px-3 py-1 rounded text-sm text-gray-400">User: test_user</span>
-        </header>
-
-        <main class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            <div class="md:col-span-1 space-y-6">
-                <div class="bg-gray-800 p-4 rounded-xl border border-gray-700">
-                    <h2 class="text-lg font-semibold text-gray-300 mb-3">My Wallets</h2>
-                    <div id="accounts-list" class="space-y-2">
-                        <p class="text-sm text-gray-500 animate-pulse">Loading balances...</p>
-                    </div>
-                </div>
-
-                <div class="bg-gray-800 p-4 rounded-xl border border-gray-700">
-                    <h2 class="text-lg font-semibold text-gray-300 mb-3">Log Transaction</h2>
-                    <form id="tx-form" class="space-y-3 text-sm">
-                        <div>
-                            <label class="block text-gray-400 mb-1">Type</label>
-                            <select id="tx-type" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-teal-500">
-                                <option value="Expense">Expense</option>
-                                <option value="Income">Income</option>
-                                <option value="Transfer">Transfer</option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-gray-400 mb-1">Amount (₱)</label>
-                            <input type="number" id="tx-amount" step="0.01" required class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-teal-500">
-                        </div>
-
-                        <div id="source-wrapper">
-                            <label class="block text-gray-400 mb-1">From Account (Source)</label>
-                            <select id="tx-source" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white account-dropdown"></select>
-                        </div>
-
-                        <div id="dest-wrapper" class="hidden">
-                            <label class="block text-gray-400 mb-1">To Account (Destination)</label>
-                            <select id="tx-dest" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white account-dropdown"></select>
-                        </div>
-
-                        <div>
-                            <label class="block text-gray-400 mb-1">Description</label>
-                            <input type="text" id="tx-desc" placeholder="e.g., Coffee, Salary payout" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-teal-500">
-                        </div>
-
-                        <button type="submit" class="w-full bg-teal-500 hover:bg-teal-600 text-gray-900 font-bold py-2 rounded transition-colors duration-200 mt-2">
-                            Submit Entry
-                        </button>
-                    </form>
-                </div>
             </div>
-
-            <div class="md:col-span-2">
-                <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 h-full">
-                    <h2 class="text-lg font-semibold text-gray-300 mb-4">Transaction Ledger</h2>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="border-b border-gray-700 text-gray-400 text-xs uppercase tracking-wider">
-                                    <th class="pb-3">Details</th>
-                                    <th class="pb-3">Type</th>
-                                    <th class="pb-3 text-right">Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody id="ledger-body" class="divide-y divide-gray-800 text-sm">
-                                </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-        </main>
-    </div>
-
-    <script>
-        // 1. CONFIGURE YOUR SUPABASE CREDENTIALS HERE
-        const SUPABASE_URL = 'https://bybkmjqmucqfudpknnie.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_Fxs4GM55_7gojCX24NQu1A_2w_w9PP2';
+        </div>
         
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const TEST_USER_ID = 1; // Maps to our seeded test user
 
-        // DOM Cache elements
-        const txType = document.getElementById('tx-type');
-        const sourceWrapper = document.getElementById('source-wrapper');
-        const destWrapper = document.getElementById('dest-wrapper');
-        const txForm = document.getElementById('tx-form');
-
-        // Toggle form logic adaptively based on transaction type selection
-        txType.addEventListener('change', () => {
-            const val = txType.value;
-            if (val === 'Expense') {
-                sourceWrapper.classList.remove('hidden');
-                destWrapper.classList.add('hidden');
-            } else if (val === 'Income') {
-                sourceWrapper.classList.add('hidden');
-                destWrapper.classList.remove('hidden');
-            } else if (val === 'Transfer') {
-                sourceWrapper.classList.remove('hidden');
-                destWrapper.classList.remove('hidden');
-            }
-        });
-
-        // Initialize Core View Engine
-        async function initApp() {
-            await fetchAccounts();
-            await fetchLedger();
-        }
-
-        // Fetch & Populate Account Dashboards
-        async function fetchAccounts() {
-            const { data: accounts, error } = await supabaseClient
-                .from('accounts')
-                .select('*')
-                .eq('user_id', TEST_USER_ID);
-
-            if (error) return console.error(error);
-
-            // Populate Balances UI
-            const accountsList = document.getElementById('accounts-list');
-            accountsList.innerHTML = accounts.map(acc => `
-                <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded">
-                    <span class="text-gray-300 font-medium">${acc.account_name}</span>
-                    <span class="font-mono text-teal-400">₱${parseFloat(acc.current_balance).toFixed(2)}</span>
-                </div>
-            `).join('');
-
-            // Populate Form Dropdowns reusably
-            const dropdowns = document.querySelectorAll('.account-dropdown');
-            dropdowns.forEach(dropdown => {
-                dropdown.innerHTML = accounts.map(acc => `
-                    <option value="${acc.account_id}">${acc.account_name}</option>
-                `).join('');
-            });
-        }
-
-        // Fetch & Reuse List Rows for Ledger History
-        async function fetchLedger() {
-            const { data: txs, error } = await supabaseClient
-                .from('transactions')
-                .select('*')
-                .eq('user_id', TEST_USER_ID)
-                .order('transaction_date', { ascending: false });
-
-            if (error) return console.error(error);
-
-            const ledgerBody = document.getElementById('ledger-body');
-            if (txs.length === 0) {
-                ledgerBody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-gray-500">No transactions recorded yet.</td></tr>`;
-                return;
-            }
-
-            ledgerBody.innerHTML = txs.map(tx => {
-                // Determine color indicators reusably
-                let colorClass = 'text-red-400';
-                let sign = '-';
-                if (tx.transaction_type === 'Income') { colorClass = 'text-green-400'; sign = '+'; }
-                if (tx.transaction_type === 'Transfer') { colorClass = 'text-gray-400'; sign = ''; }
-
-                return `
-                    <tr class="hover:bg-gray-800/50">
-                        <td class="py-3">
-                            <div class="font-medium text-gray-200">${tx.description || 'No description'}</div>
-                            <div class="text-xs text-gray-500">${new Date(tx.transaction_date).toLocaleDateString()}</div>
-                        </td>
-                        <td class="py-3">
-                            <span class="px-2 py-0.5 rounded text-xs bg-gray-700 text-gray-300">${tx.transaction_type}</span>
-                        </td>
-                        <td class="py-3 text-right font-mono ${colorClass}">
-                            ${sign}₱${parseFloat(tx.amount).toFixed(2)}
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        // Handle Form Submission and Dynamic Mathematical Adjustments
-        txForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const type = txType.value;
-            const amount = parseFloat(document.getElementById('tx-amount').value);
-            const desc = document.getElementById('tx-desc').value;
-            const srcId = parseInt(document.getElementById('tx-source').value);
-            const destId = parseInt(document.getElementById('tx-dest').value);
-
-            const payload = {
-                user_id: TEST_USER_ID,
-                transaction_type: type,
-                amount: amount,
-                description: desc,
-                source_account_id: (type === 'Expense' || type === 'Transfer') ? srcId : null,
-                destination_account_id: (type === 'Income' || type === 'Transfer') ? destId : null
-            };
-
-            // 1. Log transaction to ledger
-            const { error: txError } = await supabaseClient.from('transactions').insert([payload]);
-            if (txError) return alert('Transaction error: ' + txError.message);
-
-            // 2. Perform raw math operations depending on types to alter Account balances
-            if (type === 'Expense') {
-                await adjustBalance(srcId, -amount);
-            } else if (type === 'Income') {
-                await adjustBalance(destId, amount);
-            } else if (type === 'Transfer') {
-                await adjustBalance(srcId, -amount);
-                await adjustBalance(destId, amount);
-            }
-
-            // Reset form UI and re-fetch dashboards smoothly without page reload
-            txForm.reset();
-            txType.dispatchEvent(new Event('change'));
-            initApp();
-        });
-
-        // Small reusable helper to update table structural account properties on the fly
-        async function adjustBalance(accountId, valueDelta) {
-            // Get original balance
-            let { data: acc } = await supabaseClient.from('accounts').select('current_balance').eq('account_id', accountId).single();
-            let finalBalance = parseFloat(acc.current_balance) + valueDelta;
-            
-            // Save updated balance
-            await supabaseClient.from('accounts').update({ current_balance: finalBalance }).eq('account_id', accountId);
-        }
-
-        // Run on Initial Load
-        initApp();
-    </script>
-</body>
+        <script src="script.js"> </script>
+    </body>
 </html>

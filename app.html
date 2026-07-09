@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Tracker SPA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen font-sans">
+
+    <div class="max-w-4xl mx-auto p-4 sm:p-6">
+        <header class="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
+            <h1 class="text-2xl font-bold text-teal-400">💰 LedgerFlow Solo</h1>
+            <span class="bg-gray-800 px-3 py-1 rounded text-sm text-gray-400">User: test_user</span>
+        </header>
+
+        <main class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <div class="md:col-span-1 space-y-6">
+                <div class="bg-gray-800 p-4 rounded-xl border border-gray-700">
+                    <h2 class="text-lg font-semibold text-gray-300 mb-3">My Wallets</h2>
+                    <div id="accounts-list" class="space-y-2">
+                        <p class="text-sm text-gray-500 animate-pulse">Loading balances...</p>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 p-4 rounded-xl border border-gray-700">
+                    <h2 class="text-lg font-semibold text-gray-300 mb-3">Log Transaction</h2>
+                    <form id="tx-form" class="space-y-3 text-sm">
+                        <div>
+                            <label class="block text-gray-400 mb-1">Type</label>
+                            <select id="tx-type" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-teal-500">
+                                <option value="Expense">Expense</option>
+                                <option value="Income">Income</option>
+                                <option value="Transfer">Transfer</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-400 mb-1">Amount (₱)</label>
+                            <input type="number" id="tx-amount" step="0.01" required class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-teal-500">
+                        </div>
+
+                        <div id="source-wrapper">
+                            <label class="block text-gray-400 mb-1">From Account (Source)</label>
+                            <select id="tx-source" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white account-dropdown"></select>
+                        </div>
+
+                        <div id="dest-wrapper" class="hidden">
+                            <label class="block text-gray-400 mb-1">To Account (Destination)</label>
+                            <select id="tx-dest" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white account-dropdown"></select>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-400 mb-1">Description</label>
+                            <input type="text" id="tx-desc" placeholder="e.g., Coffee, Salary payout" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-teal-500">
+                        </div>
+
+                        <button type="submit" class="w-full bg-teal-500 hover:bg-teal-600 text-gray-900 font-bold py-2 rounded transition-colors duration-200 mt-2">
+                            Submit Entry
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="md:col-span-2">
+                <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 h-full">
+                    <h2 class="text-lg font-semibold text-gray-300 mb-4">Transaction Ledger</h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-gray-700 text-gray-400 text-xs uppercase tracking-wider">
+                                    <th class="pb-3">Details</th>
+                                    <th class="pb-3">Type</th>
+                                    <th class="pb-3 text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ledger-body" class="divide-y divide-gray-800 text-sm">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="script.js"> </script>
+</body>
+</html>

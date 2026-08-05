@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Testing let with DataSet</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+    <style>
+        body { margin: 0; }
+        #network { width: 100%; height: 100vh; }
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 13px;
+            max-width: 500px;
+            z-index: 100;
+        }
+        .controls button {
+            margin: 5px;
+            padding: 8px 15px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        .controls button.danger {
+            background: #f44336;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+        }
+        .highlight {
+            color: #FFD700;
+        }
+        .error {
+            color: #FF6B6B;
+        }
+        .success {
+            color: #4ECDC4;
+        }
+    </style>
+</head>
+<body>
+    <div id="network"></div>
+    
+    <div class="controls" id="controls">
+        <div>
+            <button onclick="test1_initial()">1. Initial Setup</button>
+            <button onclick="test2_addNodes()">2. Add Nodes</button>
+            <button onclick="test3_reassign()" class="danger">3. Reassign DataSet</button>
+            <button onclick="test4_addMore()">4. Add More Nodes</button>
+            <button onclick="test5_fix()">5. Fix: Update Network</button>
+        </div>
+        <div class="status" id="status">
+            <strong>Status:</strong> Ready. Click buttons to test.
+        </div>
+    </div>
+
+    <script>
+        "use strict";
+        
+        // Variables at global scope
+        let nodes;      // Using let so we can reassign
+        let edges;      // Using let so we can reassign
+        let network;
+        let container;
+        
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            const nodeCount = nodes ? nodes.get().length : 0;
+            const edgeCount = edges ? edges.get().length : 0;
+            statusEl.innerHTML = `
+                <div style="margin-bottom: 5px;">${message}</div>
+                <div class="highlight">Nodes: ${nodeCount} | Edges: ${edgeCount}</div>
+                ${type === 'error' ? '<div class="error">⚠️ Network may not reflect changes!</div>' : ''}
+                ${type === 'success' ? '<div class="success">✅ Network updated!</div>' : ''}
+            `;
+        }
+        
+        // ============================================
+        // TEST 1: Initial Setup
+        // ============================================
+        function test1_initial() {
+            // Create the DataSets
+            nodes = new vis.DataSet([]);
+            edges = new vis.DataSet([]);
+            
+            container = document.getElementById('network');
+            
+            const options = {
+                nodes: { shape: 'dot', size: 30 },
+                edges: { smooth: true }
+            };
+            
+            // Create network
+            network = new vis.Network(container, { nodes: nodes, edges: edges }, options);
+            
+            updateStatus('✅ Initial setup complete. Network created with empty DataSets.', 'success');
+            console.log('=== INITIAL SETUP ===');
+            console.log('nodes DataSet created:', nodes);
+            console.log('edges DataSet created:', edges);
+            console.log('network created:', network);
+        }
+        
+        // ============================================
+        // TEST 2: Add some nodes and edges
+        // ============================================
+        function test2_addNodes() {
+            if (!nodes || !edges) {
+                alert('Please run Test 1 first!');
+                return;
+            }
+            
+            nodes.add([
+                { id: 1, label: 'Node 1', color: '#FF6B6B' },
+                { id: 2, label: 'Node 2', color: '#4ECDC4' },
+                { id: 3, label: 'Node 3', color: '#45B7D1' }
+            ]);
+            
+            edges.add([
+                { id: 1, from: 1, to: 2 },
+                { id: 2, from: 2, to: 3 }
+            ]);
+            
+            updateStatus('✅ Added 3 nodes and 2 edges. Network updated automatically!', 'success');
+            console.log('=== ADDED NODES ===');
+            console.log('Nodes:', nodes.get());
+            console.log('Edges:', edges.get());
+        }
+        
+        // ============================================
+        // TEST 3: Reassign a NEW DataSet (THIS IS THE PROBLEM!)
+        // ============================================
+        function test3_reassign() {
+            if (!nodes || !edges) {
+                alert('Please run Test 1 first!');
+                return;
+            }
+            
+            // ❌ PROBLEM: Reassigning a new DataSet
+            const oldNodes = nodes;  // Keep reference to old
+            nodes = new vis.DataSet([]);
+            
+            // Add some new nodes to the NEW DataSet
+            nodes.add([
+                { id: 100, label: 'New Node 100', color: '#FFD700' },
+                { id: 200, label: 'New Node 200', color: '#9B59B6' }
+            ]);
+            
+            // ❌ The network is still using the OLD DataSet!
+            // The new nodes won't appear on the canvas!
+            
+            updateStatus(
+                '⚠️ REASSIGNED nodes to new DataSet!<br>' +
+                'But the <span class="error">network is still using the OLD DataSet</span>.<br>' +
+                'New nodes (100, 200) are NOT visible on the canvas!',
+                'error'
+            );
+            
+            console.log('=== REASSIGNED DATASET ===');
+            console.log('⚠️ OLD DataSet (still in network):', oldNodes);
+            console.log('⚠️ OLD DataSet nodes:', oldNodes.get());
+            console.log('✅ NEW DataSet (nodes variable):', nodes);
+            console.log('✅ NEW DataSet nodes:', nodes.get());
+            console.log('❌ But network is still using OLD DataSet!');
+        }
+        
+        // ============================================
+        // TEST 4: Add more nodes to the NEW DataSet
+        // ============================================
+        function test4_addMore() {
+            if (!nodes) {
+                alert('Please run Test 1 first!');
+                return;
+            }
+            
+            // Add to the NEW DataSet
+            nodes.add([
+                { id: 300, label: 'Node 300', color: '#2ECC71' },
+                { id: 400, label: 'Node 400', color: '#E74C3C' }
+            ]);
+            
+            updateStatus(
+                '⚠️ Added more nodes to NEW DataSet (300, 400).<br>' +
+                'But <span class="error">network still shows OLD DataSet</span> (1,2,3).<br>' +
+                'The new nodes (100,200,300,400) are NOT visible!',
+                'error'
+            );
+            
+            console.log('=== ADDED TO NEW DATASET ===');
+            console.log('NEW DataSet nodes:', nodes.get());
+            console.log('⚠️ Network still shows OLD DataSet nodes:', network.getOptions());
+        }
+        
+        // ============================================
+        // TEST 5: FIX - Update the network
+        // ============================================
+        function test5_fix() {
+            if (!network || !nodes) {
+                alert('Please run Test 1 first!');
+                return;
+            }
+            
+            // ✅ FIX: Update the network with the new DataSet
+            network.setData({ nodes: nodes, edges: edges });
+            
+            updateStatus(
+                '✅ FIXED! Used <code>network.setData()</code> to update.<br>' +
+                'Now the <span class="success">network shows the NEW DataSet</span>.<br>' +
+                'All nodes (100,200,300,400) are now visible!',
+                'success'
+            );
+            
+            console.log('=== FIXED NETWORK ===');
+            console.log('✅ Network now using NEW DataSet');
+            console.log('Nodes in network:', nodes.get());
+        }
+
+        // ============================================
+        // Additional Demo: Show the problem clearly
+        // ============================================
+        
+        // Automatically show the problem on load
+        window.onload = function() {
+            console.log('🚀 Test ready! Click buttons to see what happens.');
+            console.log('💡 Key observation: When you reassign a DataSet, the network still uses the old one!');
+            console.log('💡 Use network.setData() to fix it.');
+            
+            // Auto-run to demonstrate
+            setTimeout(() => {
+                test1_initial();
+            }, 4500);
+            
+            setTimeout(() => {
+                test2_addNodes();
+            }, 4500);
+            
+            setTimeout(() => {
+                test3_reassign();
+            }, 4500);
+            
+            setTimeout(() => {
+                test4_addMore();
+            }, 4500);
+            
+            setTimeout(() => {
+                test5_fix();
+            }, 4500);
+        };
+    </script>
+</body>
+</html>

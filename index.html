@@ -4,14 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HTML/CSS Playground</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/style.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
     <body>
         <div class="test-box">
-            <h1>HTML/CSS Playground</h1>
-            <p>Welcome to the playground!</p>
+            <div id="p1">
+                <h1>HTML/CSS Playground</h1>
+                <p>Welcome to the playground!</p>
+            </div>
+            <div id="p2" hidden>
+                <h1>Page 2</h1>
+                <p>Welcome to the playground!</p>
+            </div>
         </div>
         <div class="test-div">
             <button class="button">Login</button>
@@ -27,11 +33,10 @@
                 <button class="mini-button" id="miniButton3">❤</button>
                 <button class="mini-button" id="miniButton4">❤</button>
                 <button class="mini-button" id="miniButton5">❤</button>
-
             </div>
         </div>
         
 
-        <script src="script.js"> </script>
+        <script src="js/script.js"> </script>
     </body>
 </html>

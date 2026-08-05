@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML/CSS Playground</title>
+    <link rel="stylesheet" href="css/vis.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+</head>
+    <body>
+        <div class="page" style="height: 100vh; width: 100%;">
+            <div class="test-box">
+                <h1>HTML/CSS Playground</h1>
+                <p>Welcome to the playground!</p>
+            </div>
+            <div id="display-board"></div>
+            <div class="test-div">
+                <button class="button" onclick="initializeNetwork()">Network</button>
+                <button class="button" onclick="addNode(count, `Node ${count}`)">Add Node</button>
+                <button class="button" onclick="addEdge(1, 2)">Add Edge</button>
+                <button class="button" onclick="deleteNode()">Delete Node</button>
+                <button class="button" onclick="deleteEdge()">Delete Edge</button>
+            </div>
+            <div class="center">
+                <div class="fab-container">
+                    <button class="button1" id="button1">+</button>
+                    <button class="mini-button" id="miniButton1">❤</button>
+                    <button class="mini-button" id="miniButton2">❤</button>
+                    <button class="mini-button" id="miniButton3">❤</button>
+                    <button class="mini-button" id="miniButton4">❤</button>
+                    <button class="mini-button" id="miniButton5">❤</button>
+                </div>
+            </div>
+
+        </div>
+        
+
+        <script src="js/script.js"> </script>
+        <script src="js/network.js"></script>
+    </body>
+</html>

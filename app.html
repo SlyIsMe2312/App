@@ -6,86 +6,153 @@
     <title>Finance Tracker SPA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="css/app.css">
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen font-sans">
 
-    <div class="max-w-4xl mx-auto p-4 sm:p-6">
-        <header class="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
-            <h1 class="text-2xl font-bold text-teal-400">💰 LedgerFlow Solo</h1>
-            <span class="bg-gray-800 px-3 py-1 rounded text-sm text-gray-400">User: test_user</span>
+    <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+        
+        <!-- Header & Quick Nav -->
+        <header class="flex flex-wrap justify-between items-center gap-4 bg-gray-800/60 p-4 rounded-xl border border-gray-700/50">
+            <div>
+                <h1 class="text-xl font-bold text-teal-400">Finance Dashboard</h1>
+                <p class="text-xs text-gray-400">Weekly net flow & transaction history</p>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+                <button onclick="changeWeek(-1)" class="px-2.5 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs font-bold">&lt;</button>
+                <span id="week-range-label" class="text-xs font-semibold text-gray-200 min-w-[140px] text-center"></span>
+                <button onclick="changeWeek(1)" class="px-2.5 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs font-bold">&gt;</button>
+                
+                <button onclick="jumpToToday()" class="px-3 py-1 text-xs rounded bg-teal-600/80 hover:bg-teal-500 text-white font-medium ml-2 transition-colors">
+                    Today
+                </button>
+                
+                <input type="date" onchange="jumpToDate(this.value)" class="bg-gray-800 text-xs text-gray-300 border border-gray-700 rounded p-1 ml-1 cursor-pointer">
+            </div>
         </header>
 
-        <main class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            <div class="md:col-span-1 space-y-6">
-                <div class="bg-gray-800 p-4 rounded-xl border border-gray-700">
-                    <h2 class="text-lg font-semibold text-gray-300 mb-3">My Wallets</h2>
-                    <div id="accounts-list" class="space-y-2">
-                        <p class="text-sm text-gray-500 animate-pulse">Loading balances...</p>
-                    </div>
+        <!-- Main Dashboard Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+            <!-- Chart & Analytics Panel (3 Cols) -->
+            <div class="lg:col-span-3 bg-gray-800/40 p-4 md:p-5 rounded-xl border border-gray-700/50 flex flex-col justify-between space-y-4">
+                
+                <div class="flex justify-between items-center">
+                    <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Weekly Overview</h2>
                 </div>
 
-                <div class="bg-gray-800 p-4 rounded-xl border border-gray-700">
-                    <h2 class="text-lg font-semibold text-gray-300 mb-3">Log Transaction</h2>
-                    <form id="tx-form" class="space-y-3 text-sm">
-                        <div>
-                            <label class="block text-gray-400 mb-1">Type</label>
-                            <select id="tx-type" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-teal-500">
-                                <option value="Expense">Expense</option>
-                                <option value="Income">Income</option>
-                                <option value="Transfer">Transfer</option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-gray-400 mb-1">Amount (₱)</label>
-                            <input type="number" id="tx-amount" step="0.01" required class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-teal-500">
-                        </div>
+                <!-- Chart Container -->
+                <div class="relative h-72 md:h-80 w-full">
+                    <canvas id="dailyChart"></canvas>
+                </div>
 
-                        <div id="source-wrapper">
-                            <label class="block text-gray-400 mb-1">From Account (Source)</label>
-                            <select id="tx-source" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white account-dropdown"></select>
-                        </div>
+                <!-- Category Filters Section -->
+                <div class="pt-3 border-t border-gray-700/40 space-y-3">
+                    <div class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Category Filters (This Week)</div>
+                    
+                    <!-- Group Master Toggles (All Income / All Expenses / All Transfers) -->
+                    <div id="master-toggles-container" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <!-- Populated by JS -->
+                    </div>
 
-                        <div id="dest-wrapper" class="hidden">
-                            <label class="block text-gray-400 mb-1">To Account (Destination)</label>
-                            <select id="tx-dest" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white account-dropdown"></select>
-                        </div>
+                    <!-- Individual Category Badges -->
+                    <div id="expense-legends-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pt-1">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
 
-                        <div>
-                            <label class="block text-gray-400 mb-1">Description</label>
-                            <input type="text" id="tx-desc" placeholder="e.g., Coffee, Salary payout" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white focus:outline-none focus:border-teal-500">
-                        </div>
+            <!-- Right Sidebar: Active Week Days Toggle Panel (1 Col) -->
+            <div class="bg-gray-800/40 p-4 rounded-xl border border-gray-700/50 flex flex-col space-y-3">
+                <div class="flex justify-between items-center border-b border-gray-700/50 pb-2">
+                    <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Daily Net Flow</h2>
+                    <span class="text-[10px] text-gray-400">Mon &rarr; Sun</span>
+                </div>
+                <div id="dates-list" class="space-y-2 overflow-y-auto max-h-[380px] pr-1">
+                    <!-- Dynamic Daily Net Rows Populated by JS -->
+                </div>
+            </div>
 
-                        <button type="submit" class="w-full bg-teal-500 hover:bg-teal-600 text-gray-900 font-bold py-2 rounded transition-colors duration-200 mt-2">
-                            Submit Entry
+        </div>
+
+        <!-- Lower Section Grid: Accounts Dashboard + Transaction Entry Form + Ledger -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            <!-- Accounts Card -->
+            <div class="bg-gray-800/40 p-4 rounded-xl border border-gray-700/50 space-y-3">
+                <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Accounts</h2>
+                <div id="accounts-list" class="space-y-2">
+                    <!-- Dynamic Accounts List -->
+                </div>
+            </div>
+
+            <!-- Record Transaction Form -->
+            <div class="bg-gray-800/40 p-4 rounded-xl border border-gray-700/50 space-y-3 md:col-span-2">
+                <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">New Transaction</h2>
+                <form id="tx-form" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div>
+                        <label class="block text-gray-400 mb-1">Type</label>
+                        <select id="tx-type" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-gray-100">
+                            <option value="Expense">Expense</option>
+                            <option value="Income">Income</option>
+                            <option value="Transfer">Transfer</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-400 mb-1">Amount (₱)</label>
+                        <input type="number" step="0.01" id="tx-amount" required placeholder="0.00" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-gray-100">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-400 mb-1">Description / Category</label>
+                        <input type="text" id="tx-desc" placeholder="e.g. Groceries, Salary" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-gray-100">
+                    </div>
+
+                    <div id="source-wrapper">
+                        <label class="block text-gray-400 mb-1">From Account</label>
+                        <select id="tx-source" class="account-dropdown w-full bg-gray-700 border border-gray-600 rounded p-2 text-gray-100"></select>
+                    </div>
+
+                    <div id="dest-wrapper" class="hidden">
+                        <label class="block text-gray-400 mb-1">To Account</label>
+                        <select id="tx-dest" class="account-dropdown w-full bg-gray-700 border border-gray-600 rounded p-2 text-gray-100"></select>
+                    </div>
+
+                    <div class="sm:col-span-2 pt-1">
+                        <button type="submit" class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold p-2.5 rounded transition-colors text-xs uppercase tracking-wider">
+                            Save Transaction
                         </button>
-                    </form>
-                </div>
-            </div>
-
-            <div class="md:col-span-2">
-                <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 h-full">
-                    <h2 class="text-lg font-semibold text-gray-300 mb-4">Transaction Ledger</h2>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="border-b border-gray-700 text-gray-400 text-xs uppercase tracking-wider">
-                                    <th class="pb-3">Details</th>
-                                    <th class="pb-3">Type</th>
-                                    <th class="pb-3 text-right">Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody id="ledger-body" class="divide-y divide-gray-800 text-sm">
-                                </tbody>
-                        </table>
                     </div>
-                </div>
+                </form>
             </div>
 
-        </main>
+        </div>
+
+        <!-- Ledger History Table -->
+        <div class="bg-gray-800/40 p-4 rounded-xl border border-gray-700/50 space-y-3">
+            <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Transaction Ledger</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700/60">
+                            <th class="py-2">Description</th>
+                            <th class="py-2">Type</th>
+                            <th class="py-2 text-right pr-3">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ledger-body" class="divide-y divide-gray-700/30">
+                        <!-- Dynamic Ledger Rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 
-    <script src="script.js"> </script>
+    <!-- Application JavaScript File -->
+    <script src="js/app.js"></script>
 </body>
 </html>

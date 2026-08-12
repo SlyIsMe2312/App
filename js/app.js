@@ -81,7 +81,7 @@ async function fetchAccounts() {
 
     if (error) return console.error(error);
 
-    const totalBalance = accounts.reduce((sum, acc) => sum + parseFloat(acc.current_balance), 0);
+    const totalBalance = accounts.reduce((sum, acc) => sum + (parseFloat(acc.current_balance) >= 0 ? parseFloat(acc.current_balance) : 0), 0);
 
     const accountsList = document.getElementById('accounts-list');
     accountsList.innerHTML = accounts.reverse().map(acc => `
@@ -150,8 +150,8 @@ async function fetchChartData() {
         weekDates.push(formatDateISO(d));
     }
 
-    const startDateStr = `${weekDates[0]}T00:00:00.000Z`;
-    const endDateStr = `${weekDates[6]}T23:59:59.999Z`;
+    const startDateStr = `${weekDates[0]}T00:00:00.000`;
+    const endDateStr = `${weekDates[6]}T23:59:59.999`;
 
     const labelEl = document.getElementById('week-range-label');
     if (labelEl) {

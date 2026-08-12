@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive World Map</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --land-color: #334155;
+      --land-hover: #38bdf8;
+      --land-selected: #0284c7;
+      --stroke-color: #0f172a;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      padding: 1rem 1.5rem;
+      background-color: var(--card-bg);
+      border-bottom: 1px solid #334155;
+    }
+
+    header h1 { font-size: 1.25rem; font-weight: 600; }
+
+    .main-container {
+      display: flex;
+      flex: 1;
+      position: relative;
+    }
+
+    .map-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #0b1329;
+      cursor: grab;
+    }
+
+    .map-wrapper:active { cursor: grabbing; }
+
+    svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Country path styling */
+    .country {
+      fill: var(--land-color);
+      stroke: var(--stroke-color);
+      stroke-width: 0.5px;
+      transition: fill 0.15s ease, stroke-width 0.15s ease;
+      cursor: pointer;
+    }
+
+    .country:hover {
+      fill: var(--land-hover);
+    }
+
+    .country.selected {
+      fill: var(--land-selected);
+      stroke: #ffffff;
+      stroke-width: 1px;
+    }
+
+    /* Sidebar info panel */
+    .sidebar {
+      width: 320px;
+      background-color: var(--card-bg);
+      border-left: 1px solid #334155;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .sidebar h2 {
+      font-size: 1.5rem;
+      color: #38bdf8;
+    }
+
+    .sidebar p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    /* Floating tooltip */
+    .tooltip {
+      position: absolute;
+      padding: 6px 12px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid #334155;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 0.85rem;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      transform: translate(-50%, -120%);
+      white-space: nowrap;
+    }
+
+    .tooltip.visible {
+      opacity: 1;
+    }
+  </style>
+  <!-- Load D3.js and TopoJSON -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/topojson-client@3"></script>
+</head>
+<body>
+
+  <header>
+    <h1>Interactive Flat World Map</h1>
+  </header>
+
+  <div class="main-container">
+    <div class="map-wrapper" id="map-container">
+      <svg id="world-map"></svg>
+    </div>
+
+    <div class="sidebar" id="sidebar">
+      <h2 id="country-title">Select a Country</h2>
+      <p id="country-info">Click or hover over any country on the map to inspect it.</p>
+    </div>
+  </div>
+
+  <div class="tooltip" id="tooltip"></div>
+
+  <script>
+    const width = 960;
+    const height = 500;
+    let selectedCountry = null;
+
+    // 1. Setup SVG Element
+    const svg = d3.select("#world-map")
+      .attr("viewBox", `0 0 ${width} ${height}`);
+
+    const g = svg.append("g");
+
+    // 2. Define Flat Mercator Projection
+    const projection = d3.geoMercator()
+      .scale(130)
+      .translate([width / 2, height / 1.5]);
+
+    const path = d3.geoPath().projection(projection);
+
+    // 3. Setup Tooltip
+    const tooltip = d3.select("#tooltip");
+
+    // 4. Setup Zoom/Pan behavior
+    const zoom = d3.zoom()
+      .scaleExtent([1, 8])
+      .on("zoom", (event) => g.attr("transform", event.transform));
+
+    svg.call(zoom);
+
+    // 5. Load and Render World Map Data
+    d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
+      .then(data => {
+        const countries = topojson.feature(data, data.objects.countries).features;
+
+        g.selectAll("path")
+          .data(countries)
+          .enter()
+          .append("path")
+          .attr("class", "country")
+          .attr("d", path)
+          // Hover interactions
+          .on("mouseover", function(event, d) {
+            const countryName = d.properties.name || `Country Code: ${d.id}`;
+            tooltip.text(countryName).classList?.add("visible");
+            d3.select("#tooltip").classed("visible", true);
+          })
+          .on("mousemove", function(event) {
+            const container = document.getElementById("map-container").getBoundingClientRect();
+            tooltip
+              .style("left", (event.clientX - container.left) + "px")
+              .style("top", (event.clientY - container.top) + "px");
+          })
+          .on("mouseout", function() {
+            d3.select("#tooltip").classed("visible", false);
+          })
+          // Click/Selection interaction
+          .on("click", function(event, d) {
+            const countryName = d.properties.name || `Country (${d.id})`;
+
+            // Clear previous selection
+            d3.selectAll(".country").classed("selected", false);
+
+            // Select current
+            d3.select(this).classed("selected", true);
+            selectedCountry = d;
+
+            // Update Sidebar
+            d3.select("#country-title").text(countryName);
+            d3.select("#country-info").text(`Numeric Code: ${d.id}. You can hook this up to fetch API details or plot marker pins.`);
+          });
+      })
+      .catch(err => console.error("Error loading map topology:", err));
+  </script>
+</body>
+</html>

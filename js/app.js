@@ -87,7 +87,7 @@ async function fetchAccounts() {
     accountsList.innerHTML = accounts.reverse().map(acc => `
         <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded">
             <span class="text-gray-300 font-medium">${acc.account_name}</span>
-            <span class="font-mono text-teal-400">${formatCurrency(acc.current_balance)}</span>
+            <span class="font-mono ${acc.current_balance >= 0 ? 'text-teal-400' : 'text-rose-400'}">${formatCurrency(acc.current_balance)}</span>
         </div>
     `).join('') + `
         <div class="flex justify-between items-center bg-teal-900/30 p-3 rounded border border-teal-500/50 mt-2">

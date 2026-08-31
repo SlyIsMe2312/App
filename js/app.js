@@ -77,14 +77,16 @@ async function fetchAccounts() {
     const { data: accounts, error } = await supabaseClient
         .from('accounts')
         .select('*')
-        .eq('user_id', TEST_USER_ID);
+        .eq('user_id', TEST_USER_ID)
+        .order('account_id', { ascending: true }); 
 
     if (error) return console.error(error);
 
     const totalBalance = accounts.reduce((sum, acc) => sum + (parseFloat(acc.current_balance) >= 0 ? parseFloat(acc.current_balance) : 0), 0);
 
     const accountsList = document.getElementById('accounts-list');
-    accountsList.innerHTML = accounts.reverse().map(acc => `
+    // Removed .reverse() to maintain the database sort order cleanly
+    accountsList.innerHTML = accounts.map(acc => `
         <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded">
             <span class="text-gray-300 font-medium">${acc.account_name}</span>
             <span class="font-mono ${acc.current_balance >= 0 ? 'text-teal-400' : 'text-rose-400'}">${formatCurrency(acc.current_balance)}</span>

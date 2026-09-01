@@ -25,7 +25,7 @@ const palette = {
     transfer: ['rgba(96, 165, 250, 0.85)', 'rgba(59, 130, 246, 0.85)', 'rgba(37, 99, 235, 0.85)']
 };
 
-// Helper: Get Monday of given date
+// Helper: Get Monday of given date (Local Time)
 function getMonday(d) {
     const date = new Date(d);
     const day = date.getDay();
@@ -35,12 +35,18 @@ function getMonday(d) {
     return monday;
 }
 
-// Helper: Format Date as YYYY-MM-DD
+// Helper: Format Local Date as YYYY-MM-DD
 function formatDateISO(d) {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+
+// Helper: Extract Local YYYY-MM-DD from any Date object/string
+function toLocalDateStr(dateInput) {
+    const d = new Date(dateInput);
+    return formatDateISO(d);
 }
 
 // Helper: Currency formatting (PHP)
@@ -85,7 +91,6 @@ async function fetchAccounts() {
     const totalBalance = accounts.reduce((sum, acc) => sum + (parseFloat(acc.current_balance) >= 0 ? parseFloat(acc.current_balance) : 0), 0);
 
     const accountsList = document.getElementById('accounts-list');
-    // Removed .reverse() to maintain the database sort order cleanly
     accountsList.innerHTML = accounts.map(acc => `
         <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded">
             <span class="text-gray-300 font-medium">${acc.account_name}</span>
@@ -109,14 +114,18 @@ async function fetchAccounts() {
 async function fetchLedger() {
     const { data: txs, error } = await supabaseClient
         .from('transactions')
-        .select('*')
+        .select(`
+            *,
+            source_account:accounts!source_account_id(account_name),
+            dest_account:accounts!destination_account_id(account_name)
+        `)
         .eq('user_id', TEST_USER_ID)
         .order('transaction_date', { ascending: false });
 
     if (error) return console.error(error);
 
     const ledgerBody = document.getElementById('ledger-body');
-    if (txs.length === 0) {
+    if (!txs || txs.length === 0) {
         ledgerBody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-gray-500">No transactions recorded yet.</td></tr>`;
         return;
     }
@@ -127,16 +136,48 @@ async function fetchLedger() {
         if (tx.transaction_type === 'Income') { colorClass = 'text-emerald-400'; sign = '+'; }
         if (tx.transaction_type === 'Transfer') { colorClass = 'text-blue-400'; sign = ''; }
 
+        const localDateDisplay = new Date(tx.transaction_date).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric'
+        });
+
+        const sourceName = tx.source_account?.account_name || 'Unknown';
+        const destName = tx.dest_account?.account_name || 'Unknown';
+
+        let accountBadgeHtml = '';
+        if (tx.transaction_type === 'Expense') {
+            accountBadgeHtml = `<span class="text-[11px] text-rose-400">${sourceName}</span>`;
+        } else if (tx.transaction_type === 'Income') {
+            accountBadgeHtml = `<span class="text-[11px] text-emerald-400">${destName}</span>`;
+        } else if (tx.transaction_type === 'Transfer') {
+            accountBadgeHtml = `
+                <span class="text-[11px] text-gray-400 inline-flex items-center gap-1">
+                    <span class="text-rose-400 truncate max-w-[60px]">${sourceName}</span>
+                    &rarr;
+                    <span class="text-emerald-400 truncate max-w-[60px]">${destName}</span>
+                </span>
+            `;
+        }
+
         return `
             <tr class="hover:bg-gray-800/50">
-                <td class="py-3">
-                    <div class="font-medium text-gray-200">${tx.description || 'Uncategorized'}</div>
-                    <div class="text-xs text-gray-500">${String(tx.transaction_date).split('T')[0]}</div>
+                <td class="py-2.5 pl-1 pr-2">
+                    <div class="font-medium text-gray-200 truncate" title="${tx.description || 'Uncategorized'}">
+                        ${tx.description || 'Uncategorized'}
+                    </div>
+                    
+                    <!-- PASTE THE CODE BLOCK HERE -->
+                    <div class="flex flex-wrap items-center gap-1.5 mt-0.5">
+                        <span class="text-[10px] text-gray-400">${localDateDisplay}</span>
+                        <span class="text-[10px] px-1.5 py-0.2 rounded bg-gray-700/80 text-gray-300 sm:hidden">${tx.transaction_type}</span>
+                        <span class="text-[10px]">${accountBadgeHtml}</span>
+                    </div>
+                    
                 </td>
-                <td class="py-3">
+                <td class="py-2.5 hidden sm:table-cell">
                     <span class="px-2 py-0.5 rounded text-xs bg-gray-700 text-gray-300">${tx.transaction_type}</span>
                 </td>
-                <td class="py-3 pr-3 text-right font-mono ${colorClass}">
+                <td class="py-2.5 pr-1 text-right font-mono font-semibold whitespace-nowrap ${colorClass}">
                     ${sign}${formatCurrency(tx.amount)}
                 </td>
             </tr>
@@ -152,13 +193,15 @@ async function fetchChartData() {
         weekDates.push(formatDateISO(d));
     }
 
-    const startDateStr = `${weekDates[0]}T00:00:00.000`;
-    const endDateStr = `${weekDates[6]}T23:59:59.999`;
+    // FIX: Convert start and end bounds to exact UTC ISO strings for Supabase query
+    const startObj = new Date(weekDates[0] + 'T00:00:00');
+    const endObj = new Date(weekDates[6] + 'T23:59:59.999');
+
+    const startDateStr = startObj.toISOString();
+    const endDateStr = endObj.toISOString();
 
     const labelEl = document.getElementById('week-range-label');
     if (labelEl) {
-        const startObj = new Date(weekDates[0] + 'T00:00:00');
-        const endObj = new Date(weekDates[6] + 'T00:00:00');
         labelEl.innerText = `${startObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
     }
 
@@ -188,9 +231,10 @@ function renderChartAndSidebar(weekDates) {
 
     weekDates.forEach(d => dailyTotals[d] = 0);
 
-    // 1. Organize Transactions into Detailed Sub-Categories
+    // 1. Organize Transactions using Local Date Keys
     rawTxs.forEach(tx => {
-        const date = String(tx.transaction_date).split('T')[0];
+        // FIX: Extract local date string instead of splitting raw UTC string
+        const date = toLocalDateStr(tx.transaction_date);
         const amount = parseFloat(tx.amount);
         const type = tx.transaction_type;
         const desc = tx.description ? tx.description.trim() : (type + ' Item');
@@ -207,11 +251,10 @@ function renderChartAndSidebar(weekDates) {
         }
     });
 
-    // 2. Compute Net Daily Flow Dynamically Based On Active Categories
+    // 2. Compute Net Daily Flow
     weekDates.forEach(date => {
         let net = 0;
 
-        // Add Active Income Items
         Object.keys(incomeByDesc).forEach(desc => {
             const key = `Income: ${desc}`;
             if (!hiddenDatasets.has(key)) {
@@ -219,7 +262,6 @@ function renderChartAndSidebar(weekDates) {
             }
         });
 
-        // Subtract Active Expense Items
         Object.keys(expensesByDesc).forEach(desc => {
             const key = `Expense: ${desc}`;
             if (!hiddenDatasets.has(key)) {
@@ -325,12 +367,11 @@ function renderChartAndSidebar(weekDates) {
         });
     });
 
-// 5. Render Master Group Toggles ("All Income", "All Expenses", "All Transfers")
+    // 5. Render Master Group Toggles
     const masterContainer = document.getElementById('master-toggles-container');
     if (masterContainer) {
         let masterHtml = '';
 
-        // Distinct color styling configurations for each group
         const groupConfigs = {
             Expense: {
                 name: 'All Expenses',
@@ -514,13 +555,15 @@ txForm.addEventListener('submit', async (e) => {
     const srcId = parseInt(document.getElementById('tx-source').value);
     const destId = parseInt(document.getElementById('tx-dest').value);
 
+    // FIX: Include ISO timestamp on insert to ensure precision
     const payload = {
         user_id: TEST_USER_ID,
         transaction_type: type,
         amount: amount,
         description: desc,
         source_account_id: (type === 'Expense' || type === 'Transfer') ? srcId : null,
-        destination_account_id: (type === 'Income' || type === 'Transfer') ? destId : null
+        destination_account_id: (type === 'Income' || type === 'Transfer') ? destId : null,
+        transaction_date: new Date().toISOString()
     };
 
     const { error: txError } = await supabaseClient.from('transactions').insert([payload]);

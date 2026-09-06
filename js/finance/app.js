@@ -192,12 +192,21 @@ txForm.addEventListener('submit', (e) => {
     const srcId = parseInt(document.getElementById('tx-source').value);
     const destId = parseInt(document.getElementById('tx-dest').value);
 
-    let txDateIso;
+let txDateIso;
     if (customDateVal) {
-        const now = new Date();
-        const selectedDate = new Date(customDateVal + 'T00:00:00');
-        selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
-        txDateIso = selectedDate.toISOString();
+        // Parse the input directly (handles both 'YYYY-MM-DD' and 'YYYY-MM-DDTHH:mm')
+        const selectedDate = new Date(customDateVal);
+        // Check if user provided an invalid date string
+        if (isNaN(selectedDate.getTime())) {
+            txDateIso = new Date().toISOString();
+        } else {
+            // If the date input didn't include time (e.g. standard type="date"), set current time
+            if (!customDateVal.includes('T')) {
+                const now = new Date();
+                selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+            }
+            txDateIso = selectedDate.toISOString();
+        }
     } else {
         txDateIso = new Date().toISOString();
     }

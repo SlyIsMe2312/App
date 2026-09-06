@@ -17,6 +17,8 @@ let dailyChart = null;
 let activeDates = new Set();
 let hiddenDatasets = new Set();
 let rawTxs = [];
+let transactionQueue = [];
+let accountCacheMap = {};
 
 // Color Palette Allocation
 const palette = {
@@ -62,15 +64,20 @@ txType.addEventListener('change', () => {
     const val = txType.value;
     if (val === 'Expense') {
         sourceWrapper.classList.remove('hidden');
+        sourceWrapper.classList.add('sm:col-span-2');
         destWrapper.classList.add('hidden');
     } else if (val === 'Income') {
         sourceWrapper.classList.add('hidden');
         destWrapper.classList.remove('hidden');
+        destWrapper.classList.add('sm:col-span-2');
     } else if (val === 'Transfer') {
         sourceWrapper.classList.remove('hidden');
+        sourceWrapper.classList.remove('sm:col-span-2');
         destWrapper.classList.remove('hidden');
+        destWrapper.classList.remove('sm:col-span-2');
     }
 });
+
 
 // Initial boot logic
 async function initApp() {
@@ -88,18 +95,31 @@ async function fetchAccounts() {
 
     if (error) return console.error(error);
 
-    const totalBalance = accounts.reduce((sum, acc) => sum + (parseFloat(acc.current_balance) >= 0 ? parseFloat(acc.current_balance) : 0), 0);
+    accountCacheMap = {};
+    accounts.forEach(acc => { accountCacheMap[acc.account_id] = acc.account_name; });
+
+    const totalBalance = accounts.reduce((sum, acc) => sum + (acc.account_type !== 'Lend' && parseFloat(acc.current_balance) >= 0 ? parseFloat(acc.current_balance) : 0), 0);
+    const totalLend = accounts.reduce((sum, acc) => sum + (acc.account_type === 'Lend' ? parseFloat(acc.current_balance) : 0), 0);
+    const totalDebt = accounts.reduce((sum, acc) => sum + (acc.account_type !== 'Lend' && parseFloat(acc.current_balance) < 0 ? Math.abs(parseFloat(acc.current_balance)) : 0), 0);
 
     const accountsList = document.getElementById('accounts-list');
     accountsList.innerHTML = accounts.map(acc => `
         <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded">
             <span class="text-gray-300 font-medium">${acc.account_name}</span>
-            <span class="font-mono ${acc.current_balance >= 0 ? 'text-teal-400' : 'text-rose-400'}">${formatCurrency(acc.current_balance)}</span>
+            <span class="font-mono ${acc.account_type !== 'Lend' ? (acc.current_balance >= 0 ? 'text-teal-400' : 'text-rose-400') : 'text-yellow-400'}">${formatCurrency(acc.current_balance)}</span>
         </div>
     `).join('') + `
         <div class="flex justify-between items-center bg-teal-900/30 p-3 rounded border border-teal-500/50 mt-2">
             <span class="text-gray-200 font-bold">Total Net</span>
             <span class="font-mono text-teal-300 font-bold text-lg">${formatCurrency(totalBalance)}</span>
+        </div>
+        <div class="flex justify-between items-center bg-yellow-900/30 p-3 rounded border border-yellow-500/50 mt-2">
+            <span class="text-gray-200 font-bold">Total Lend</span>
+            <span class="font-mono text-yellow-300 font-bold text-lg">${formatCurrency(totalLend)}</span>
+        </div>
+        <div class="flex justify-between items-center bg-orange-900/30 p-3 rounded border border-orange-500/50 mt-2">
+            <span class="text-gray-200 font-bold">Total Debt</span>
+            <span class="font-mono text-orange-300 font-bold text-lg">${formatCurrency(totalDebt)}</span>
         </div>
     `;
 
@@ -166,7 +186,6 @@ async function fetchLedger() {
                         ${tx.description || 'Uncategorized'}
                     </div>
                     
-                    <!-- PASTE THE CODE BLOCK HERE -->
                     <div class="flex flex-wrap items-center gap-1.5 mt-0.5">
                         <span class="text-[10px] text-gray-400">${localDateDisplay}</span>
                         <span class="text-[10px] px-1.5 py-0.2 rounded bg-gray-700/80 text-gray-300 sm:hidden">${tx.transaction_type}</span>
@@ -545,42 +564,46 @@ window.jumpToDate = function(dateString) {
     fetchChartData();
 };
 
-// Handle Form Submission
-txForm.addEventListener('submit', async (e) => {
+// Form handler (Pushes item to queue)
+txForm.addEventListener('submit', (e) => {
     e.preventDefault();
 
     const type = txType.value;
     const amount = parseFloat(document.getElementById('tx-amount').value);
-    const desc = document.getElementById('tx-desc').value;
+    const desc = document.getElementById('tx-desc').value.trim() || 'Uncategorized';
+    const customDateVal = document.getElementById('tx-date').value;
     const srcId = parseInt(document.getElementById('tx-source').value);
     const destId = parseInt(document.getElementById('tx-dest').value);
 
-    // FIX: Include ISO timestamp on insert to ensure precision
-    const payload = {
+    // Date logic: Keep selected date or fallback to current timestamp
+    let txDateIso;
+    if (customDateVal) {
+        const now = new Date();
+        const selectedDate = new Date(customDateVal + 'T00:00:00');
+        selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+        txDateIso = selectedDate.toISOString();
+    } else {
+        txDateIso = new Date().toISOString();
+    }
+
+    const queuedItem = {
+        id: Date.now() + Math.random(),
         user_id: TEST_USER_ID,
         transaction_type: type,
         amount: amount,
         description: desc,
         source_account_id: (type === 'Expense' || type === 'Transfer') ? srcId : null,
         destination_account_id: (type === 'Income' || type === 'Transfer') ? destId : null,
-        transaction_date: new Date().toISOString()
+        transaction_date: txDateIso
     };
 
-    const { error: txError } = await supabaseClient.from('transactions').insert([payload]);
-    if (txError) return alert('Transaction error: ' + txError.message);
+    transactionQueue.push(queuedItem);
+    renderQueueList();
 
-    if (type === 'Expense') {
-        await adjustBalance(srcId, -amount);
-    } else if (type === 'Income') {
-        await adjustBalance(destId, amount);
-    } else if (type === 'Transfer') {
-        await adjustBalance(srcId, -amount);
-        await adjustBalance(destId, amount);
-    }
-
-    txForm.reset();
-    txType.dispatchEvent(new Event('change'));
-    initApp();
+    // Clear inputs
+    document.getElementById('tx-amount').value = '';
+    document.getElementById('tx-desc').value = '';
+    document.getElementById('tx-date').value = '';
 });
 
 async function adjustBalance(accountId, valueDelta) {
@@ -588,6 +611,114 @@ async function adjustBalance(accountId, valueDelta) {
     let finalBalance = parseFloat(acc.current_balance) + valueDelta;
     await supabaseClient.from('accounts').update({ current_balance: finalBalance }).eq('account_id', accountId);
 }
+
+// ADD THIS at the end of your JS file: Queue UI & Processing Functions
+
+function renderQueueList() {
+    const queueContainer = document.getElementById('queue-container');
+    const queueList = document.getElementById('queue-list');
+    const queueCount = document.getElementById('queue-count');
+
+    if (transactionQueue.length === 0) {
+        queueContainer.classList.add('hidden');
+        return;
+    }
+
+    queueContainer.classList.remove('hidden');
+    queueCount.innerText = transactionQueue.length;
+
+    queueList.innerHTML = transactionQueue.reverse().map((item) => {
+        let colorClass = 'text-rose-400';
+        let sign = '-';
+        if (item.transaction_type === 'Income') { colorClass = 'text-emerald-400'; sign = '+'; }
+        if (item.transaction_type === 'Transfer') { colorClass = 'text-blue-400'; sign = ''; }
+
+        const dateFormatted = new Date(item.transaction_date).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric'
+        });
+
+        const srcName = accountCacheMap[item.source_account_id] || '';
+        const destName = accountCacheMap[item.destination_account_id] || '';
+        let accDisplay = srcName;
+        if (item.transaction_type === 'Income') accDisplay = destName;
+        if (item.transaction_type === 'Transfer') accDisplay = `${srcName} &rarr; ${destName}`;
+
+        return `
+            <div class="flex items-center justify-between bg-gray-700/60 p-2 rounded text-xs border border-gray-600/40">
+                <div class="truncate pr-2">
+                    <div class="font-medium text-gray-200 truncate">${item.description}</div>
+                    <div class="text-[10px] text-gray-400 flex items-center gap-1.5 mt-0.5">
+                        <span>${dateFormatted}</span>
+                        <span class="px-1 py-0.2 bg-gray-800 rounded text-gray-300">${item.transaction_type}</span>
+                        <span class="text-teal-300">${accDisplay}</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2 flex-shrink-0">
+                    <span class="font-mono font-semibold ${colorClass}">${sign}${formatCurrency(item.amount)}</span>
+                    <button type="button" onclick="removeFromQueue(${item.id})" class="text-gray-400 hover:text-rose-400 px-1 font-bold">&times;</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+window.removeFromQueue = function(id) {
+    transactionQueue = transactionQueue.filter(item => item.id !== id);
+    renderQueueList();
+};
+
+window.clearQueue = function() {
+    transactionQueue = [];
+    renderQueueList();
+};
+
+window.processQueue = async function() {
+    if (transactionQueue.length === 0) return;
+
+    const btn = document.getElementById('btn-save-all');
+    btn.disabled = true;
+    btn.innerText = 'Saving...';
+
+    const balanceDeltas = {};
+
+    const payloads = transactionQueue.map(item => {
+        const { id, ...dbPayload } = item;
+
+        if (item.transaction_type === 'Expense') {
+            balanceDeltas[item.source_account_id] = (balanceDeltas[item.source_account_id] || 0) - item.amount;
+        } else if (item.transaction_type === 'Income') {
+            balanceDeltas[item.destination_account_id] = (balanceDeltas[item.destination_account_id] || 0) + item.amount;
+        } else if (item.transaction_type === 'Transfer') {
+            balanceDeltas[item.source_account_id] = (balanceDeltas[item.source_account_id] || 0) - item.amount;
+            balanceDeltas[item.destination_account_id] = (balanceDeltas[item.destination_account_id] || 0) + item.amount;
+        }
+
+        return dbPayload;
+    });
+
+    try {
+        const { error: txError } = await supabaseClient.from('transactions').insert(payloads);
+        if (txError) throw txError;
+
+        for (const [accIdStr, delta] of Object.entries(balanceDeltas)) {
+            if (delta !== 0) {
+                await adjustBalance(parseInt(accIdStr), delta);
+            }
+        }
+
+        transactionQueue = [];
+        renderQueueList();
+        txForm.reset();
+        txType.dispatchEvent(new Event('change'));
+        await initApp();
+    } catch (err) {
+        alert('Error processing queue: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'Save All Transactions';
+    }
+};
 
 // Initial Boot
 initApp();

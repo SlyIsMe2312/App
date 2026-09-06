@@ -16,8 +16,8 @@ export async function fetchLedgerFromDB() {
         .from('transactions')
         .select(`
             *,
-            source_account:accounts!source_account_id(account_name),
-            dest_account:accounts!destination_account_id(account_name)
+            source_account:accounts!source_account_id(account_name, account_type),
+            dest_account:accounts!destination_account_id(account_name, account_type)
         `)
         .eq('user_id', TEST_USER_ID)
         .order('transaction_date', { ascending: false });

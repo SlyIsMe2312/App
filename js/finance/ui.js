@@ -10,7 +10,7 @@ export function renderAccounts(accounts) {
     accountsList.innerHTML = accounts.map(acc => `
         <div class="flex justify-between items-center bg-gray-700/50 p-2 rounded">
             <span class="text-gray-300 font-medium">${acc.account_name}</span>
-            <span class="font-mono ${acc.account_type !== 'Lend' ? (acc.current_balance >= 0 ? 'text-teal-400' : 'text-rose-400') : 'text-yellow-400'}">${formatCurrency(acc.current_balance)}</span>
+            <span class="font-mono ${acc.account_type !== 'Lend' ? (acc.current_balance >= 0 ? 'text-teal-400' : 'text-orange-400') : 'text-yellow-400'}">${formatCurrency(acc.current_balance)}</span>
         </div>
     `).join('') + `
         <div class="flex justify-between items-center bg-teal-900/30 p-3 rounded border border-teal-500/50 mt-2">
@@ -44,9 +44,12 @@ export function renderLedger(txs) {
 
     ledgerBody.innerHTML = txs.map(tx => {
         let colorClass = 'text-rose-400';
+        let colorDestination = 'text-emerald-400';
         let sign = '-';
         if (tx.transaction_type === 'Income') { colorClass = 'text-emerald-400'; sign = '+'; }
         if (tx.transaction_type === 'Transfer') { colorClass = 'text-blue-400'; sign = ''; }
+        if (tx.dest_account?.account_type === 'Lend') { colorDestination = 'text-yellow-400'; }
+        
 
         const localDateDisplay = new Date(tx.transaction_date).toLocaleDateString('en-US', {
             month: 'short',
@@ -55,6 +58,7 @@ export function renderLedger(txs) {
 
         const sourceName = tx.source_account?.account_name || 'Unknown';
         const destName = tx.dest_account?.account_name || 'Unknown';
+        
 
         let accountBadgeHtml = '';
         if (tx.transaction_type === 'Expense') {
@@ -66,7 +70,7 @@ export function renderLedger(txs) {
                 <span class="text-[11px] text-gray-400 inline-flex items-center gap-1">
                     <span class="text-rose-400 truncate max-w-[60px]">${sourceName}</span>
                     &rarr;
-                    <span class="text-emerald-400 truncate max-w-[60px]">${destName}</span>
+                    <span class="${colorDestination} truncate max-w-[60px]">${destName}</span>
                 </span>
             `;
         }
@@ -110,7 +114,7 @@ export function renderQueueList() {
     queueList.innerHTML = [...state.transactionQueue].reverse().map((item) => {
         let colorClass = 'text-rose-400';
         let sign = '-';
-        if (item.transaction_type === 'Income') { colorClass = 'text-emerald-400'; sign = '+'; }
+        if (item.transaction_type === 'Income') { colorClass = 'text-green-400'; sign = '+'; }
         if (item.transaction_type === 'Transfer') { colorClass = 'text-blue-400'; sign = ''; }
 
         const dateFormatted = new Date(item.transaction_date).toLocaleDateString('en-US', {
@@ -121,8 +125,15 @@ export function renderQueueList() {
         const srcName = state.accountCacheMap[item.source_account_id] || '';
         const destName = state.accountCacheMap[item.destination_account_id] || '';
         let accDisplay = srcName;
-        if (item.transaction_type === 'Income') accDisplay = destName;
-        if (item.transaction_type === 'Transfer') accDisplay = `${srcName} &rarr; ${destName}`;
+        if (item.transaction_type === 'Expense') accDisplay = `<span class="text-[11px] text-rose-400">${srcName}</span>`;
+        if (item.transaction_type === 'Income') accDisplay = `<span class="text-[11px] text-green-400">${destName}</span>`;
+        if (item.transaction_type === 'Transfer') accDisplay = `
+                <span class="text-[11px] text-gray-400 inline-flex items-center gap-1">
+                    <span class="text-rose-400 truncate max-w-[60px]">${srcName}</span>
+                    &rarr;
+                    <span class="text-green-400 truncate max-w-[60px]">${destName}</span
+                </span>
+            `;
 
         return `
             <div class="flex items-center justify-between bg-gray-700/60 p-2 rounded text-xs border border-gray-600/40">

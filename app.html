@@ -11,6 +11,29 @@
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen font-sans">
 
+    <section id="auth-view" class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-sm space-y-5 rounded-xl border border-gray-700 bg-gray-800/80 p-6 shadow-xl">
+            <div>
+                <h1 class="text-xl font-bold text-teal-400">Finance Dashboard</h1>
+                <p class="mt-1 text-sm text-gray-400">Sign in to access your financial data.</p>
+            </div>
+            <form id="auth-form" class="space-y-3">
+                <div>
+                    <label for="auth-email" class="mb-1 block text-xs text-gray-400">Email</label>
+                    <input id="auth-email" type="email" autocomplete="username" required class="w-full rounded border border-gray-600 bg-gray-700 p-2.5 text-sm text-gray-100">
+                </div>
+                <div>
+                    <label for="auth-password" class="mb-1 block text-xs text-gray-400">Password</label>
+                    <input id="auth-password" type="password" autocomplete="current-password" required class="w-full rounded border border-gray-600 bg-gray-700 p-2.5 text-sm text-gray-100">
+                </div>
+                <button id="auth-submit" type="submit" class="w-full rounded bg-teal-600 p-2.5 text-sm font-bold text-white hover:bg-teal-500">Sign In</button>
+                <button id="auth-signup" type="button" class="w-full rounded border border-gray-600 p-2.5 text-sm font-medium text-gray-200 hover:bg-gray-700">Create Account</button>
+                <p id="auth-message" role="status" aria-live="polite" class="min-h-5 text-sm text-gray-300"></p>
+            </form>
+        </div>
+    </section>
+
+    <main id="finance-app" class="hidden">
     <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
         
         <!-- Header & Quick Nav -->
@@ -32,9 +55,12 @@
                         Today
                     </button>
                     <input type="date" onchange="jumpToDate(this.value)" class="flex-1 sm:flex-none max-w-[130px] bg-gray-800 text-xs text-gray-300 border border-gray-700 rounded p-1 cursor-pointer">
+                    <span id="signed-in-email" class="hidden lg:inline max-w-40 truncate text-[10px] text-gray-400"></span>
+                    <button id="sign-out" type="button" class="flex-1 sm:flex-none rounded bg-gray-700 px-3 py-1.5 text-xs text-gray-200 hover:bg-gray-600">Sign Out</button>
                 </div>
             </div>
         </header>
+        <p id="app-status" role="status" aria-live="polite" class="hidden rounded border border-rose-800 bg-rose-950/40 p-3 text-sm"></p>
 
         <!-- Main Dashboard Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -51,9 +77,9 @@
                     <canvas id="dailyChart"></canvas>
                 </div>
 
-                <!-- Category Filters Section -->
+                <!-- Weekly Transactions -->
                 <div class="pt-3 border-t border-gray-700/40 space-y-3">
-                    <div class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Category Filters (This Week)</div>
+                    <div class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Transactions (This Week)</div>
                     
                     <!-- Group Master Toggles (All Income / All Expenses / All Transfers) -->
                     <div id="master-toggles-container" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -106,7 +132,27 @@
 
             <!-- Accounts Card -->
             <div class="bg-gray-800/40 p-4 rounded-xl border border-gray-700/50 space-y-3">
-                <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Accounts</h2>
+                <div class="flex items-center justify-between gap-2">
+                    <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Accounts</h2>
+                    <button type="button" id="toggle-add-account" class="rounded bg-teal-700 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-teal-600">
+                        Add Account
+                    </button>
+                </div>
+                <form id="add-account-form" class="hidden space-y-2 rounded border border-gray-700 bg-gray-800/70 p-3 text-xs">
+                    <div>
+                        <label for="new-account-name" class="mb-1 block text-gray-400">Account Name</label>
+                        <input id="new-account-name" type="text" required maxlength="100" placeholder="e.g. Savings" class="w-full rounded border border-gray-600 bg-gray-700 p-2 text-gray-100">
+                    </div>
+                    <div>
+                        <label for="new-account-type" class="mb-1 block text-gray-400">Account Type</label>
+                        <input id="new-account-type" type="text" required maxlength="50" value="Cash" placeholder="e.g. Cash, Bank, Lend" class="w-full rounded border border-gray-600 bg-gray-700 p-2 text-gray-100">
+                    </div>
+                    <div>
+                        <label for="new-account-balance" class="mb-1 block text-gray-400">Opening Balance (₱)</label>
+                        <input id="new-account-balance" type="number" step="0.01" value="0" required class="w-full rounded border border-gray-600 bg-gray-700 p-2 text-gray-100">
+                    </div>
+                    <button id="save-new-account" type="submit" class="w-full rounded bg-teal-600 p-2 font-semibold text-white hover:bg-teal-500">Save Account</button>
+                </form>
                 <div id="accounts-list" class="space-y-2">
                     <!-- Dynamic Accounts List -->
                 </div>
@@ -186,7 +232,56 @@
 
         <!-- Ledger History Table  -->
         <div class="bg-gray-800/40 p-4 rounded-xl border border-gray-700/50 space-y-3">
-            <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Transaction Ledger</h2>
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Transaction Ledger</h2>
+                <div id="ledger-filter-controls" class="flex flex-wrap gap-2">
+                    <label class="flex items-center gap-2 text-xs text-gray-400">
+                        Details
+                        <input id="ledger-details-search" type="search" placeholder="Search transactions..." class="w-44 rounded border border-gray-600 bg-gray-700 p-2 text-gray-100 placeholder:text-gray-500">
+                    </label>
+                    <details class="relative text-xs">
+                        <summary class="cursor-pointer rounded border border-gray-600 bg-gray-700 px-3 py-2 text-gray-100">
+                            Account: <span id="ledger-account-filter-label">All accounts</span>
+                        </summary>
+                        <div id="ledger-account-options" class="absolute right-0 z-10 mt-1 max-h-60 min-w-48 overflow-y-auto rounded border border-gray-600 bg-gray-800 p-2 shadow-lg">
+                        </div>
+                    </details>
+                    <details class="relative text-xs">
+                        <summary class="cursor-pointer rounded border border-gray-600 bg-gray-700 px-3 py-2 text-gray-100">
+                            Type: <span id="ledger-type-filter-label">All types</span>
+                        </summary>
+                        <div id="ledger-type-options" class="absolute right-0 z-10 mt-1 min-w-40 rounded border border-gray-600 bg-gray-800 p-2 shadow-lg">
+                            <label class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-gray-200 hover:bg-gray-700">
+                                <input type="checkbox" data-ledger-filter-group="type" data-filter-all="true" checked>
+                                All types
+                            </label>
+                            <label class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-gray-200 hover:bg-gray-700">
+                                <input type="checkbox" data-ledger-filter-group="type" value="Expense">
+                                Expense
+                            </label>
+                            <label class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-gray-200 hover:bg-gray-700">
+                                <input type="checkbox" data-ledger-filter-group="type" value="Income">
+                                Income
+                            </label>
+                            <label class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-gray-200 hover:bg-gray-700">
+                                <input type="checkbox" data-ledger-filter-group="type" value="Transfer">
+                                Transfer
+                            </label>
+                        </div>
+                    </details>
+                    <label class="flex items-center gap-2 text-xs text-gray-400">
+                        From
+                        <input id="ledger-start-date" type="date" class="rounded border border-gray-600 bg-gray-700 p-2 text-gray-100">
+                    </label>
+                    <label class="flex items-center gap-2 text-xs text-gray-400">
+                        To
+                        <input id="ledger-end-date" type="date" class="rounded border border-gray-600 bg-gray-700 p-2 text-gray-100">
+                    </label>
+                    <button id="clear-ledger-dates" type="button" class="rounded border border-gray-600 bg-gray-700 px-3 py-2 text-xs text-gray-200 hover:bg-gray-600">
+                        Clear dates
+                    </button>
+                </div>
+            </div>
             <div class="overflow-x-auto -mx-2 px-2">
                 <table class="w-full text-left text-xs table-fixed">
                     <thead>
@@ -194,6 +289,7 @@
                             <th class="pb-2 pl-1 w-auto">Details</th>
                             <th class="pb-2 hidden sm:table-cell sm:w-24">Type</th>
                             <th class="pb-2 text-right pr-1 w-24">Amount</th>
+                            <th class="pb-2 text-right pr-1 w-24">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="ledger-body" class="divide-y divide-gray-700/30">
@@ -204,6 +300,59 @@
         </div>
 
     </div>
+    </main>
+
+    <dialog id="edit-transaction-dialog" class="w-[min(100%-2rem,32rem)] rounded-xl border border-gray-700 bg-gray-800 p-0 text-gray-100 backdrop:bg-black/70">
+        <form id="edit-transaction-form" class="space-y-4 p-5">
+            <div class="flex items-center justify-between">
+                <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-300">Edit Transaction</h2>
+                <button type="button" id="cancel-edit-transaction" class="text-xl leading-none text-gray-400 hover:text-white" aria-label="Close">&times;</button>
+            </div>
+            <div>
+                <label for="edit-tx-type" class="mb-1 block text-xs text-gray-400">Type</label>
+                <select id="edit-tx-type" class="w-full rounded border border-gray-600 bg-gray-700 p-2 text-sm text-gray-100">
+                    <option value="Expense">Expense</option>
+                    <option value="Income">Income</option>
+                    <option value="Transfer">Transfer</option>
+                </select>
+            </div>
+            <div>
+                <label for="edit-tx-amount" class="mb-1 block text-xs text-gray-400">Amount (₱)</label>
+                <input type="number" step="0.01" min="0.01" id="edit-tx-amount" required class="w-full rounded border border-gray-600 bg-gray-700 p-2 text-sm text-gray-100">
+            </div>
+            <div>
+                <label for="edit-tx-desc" class="mb-1 block text-xs text-gray-400">Description / Category</label>
+                <input type="text" id="edit-tx-desc" class="w-full rounded border border-gray-600 bg-gray-700 p-2 text-sm text-gray-100">
+            </div>
+            <div>
+                <label for="edit-tx-date" class="mb-1 block text-xs text-gray-400">Date &amp; Time</label>
+                <input type="datetime-local" id="edit-tx-date" required class="w-full rounded border border-gray-600 bg-gray-700 p-2 text-sm text-gray-100">
+            </div>
+            <div id="edit-source-wrapper">
+                <label for="edit-tx-source" class="mb-1 block text-xs text-gray-400">From Account</label>
+                <select id="edit-tx-source" class="edit-account-dropdown w-full rounded border border-gray-600 bg-gray-700 p-2 text-sm text-gray-100"></select>
+            </div>
+            <div id="edit-dest-wrapper">
+                <label for="edit-tx-dest" class="mb-1 block text-xs text-gray-400">To Account</label>
+                <select id="edit-tx-dest" class="edit-account-dropdown w-full rounded border border-gray-600 bg-gray-700 p-2 text-sm text-gray-100"></select>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" id="cancel-edit-transaction-secondary" class="rounded bg-gray-700 px-3 py-2 text-xs text-gray-200 hover:bg-gray-600">Cancel</button>
+                <button id="save-edit-transaction" type="submit" class="rounded bg-teal-600 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-500">Save Changes</button>
+            </div>
+        </form>
+    </dialog>
+
+    <dialog id="delete-transaction-dialog" class="w-[min(100%-2rem,28rem)] rounded-xl border border-gray-700 bg-gray-800 p-0 text-gray-100 backdrop:bg-black/70">
+        <form method="dialog" class="space-y-4 p-5">
+            <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-200">Delete Transaction?</h2>
+            <p class="text-sm text-gray-300">This will permanently delete <span id="delete-transaction-description" class="font-semibold text-white"></span> and reverse its effect on the account balance(s).</p>
+            <div class="flex justify-end gap-2 pt-2">
+                <button id="cancel-delete-transaction" value="cancel" class="rounded bg-gray-700 px-3 py-2 text-xs text-gray-200 hover:bg-gray-600">Cancel</button>
+                <button id="confirm-delete-transaction" value="confirm" class="rounded bg-rose-700 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-600">Delete Transaction</button>
+            </div>
+        </form>
+    </dialog>
 
     <!-- Application JavaScript File -->
     <script type="module" src="js/finance/app.js"></script>

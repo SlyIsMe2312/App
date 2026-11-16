@@ -1,6 +1,7 @@
 import { getMonday } from './helpers.js';
 
 export const state = {
+    authUserId: null,
     currentWeekStart: getMonday(new Date()),
     dailyChart: null,
     activeDates: new Set(),
@@ -19,6 +20,12 @@ export function updateAccountCache(accounts) {
 
 export function addToQueue(item) {
     state.transactionQueue.push(item);
+}
+
+export function updateQueuedTransaction(id, updates) {
+    const item = state.transactionQueue.find(queuedItem => queuedItem.id === id);
+    if (!item) throw new Error('Queued transaction was not found.');
+    Object.assign(item, updates);
 }
 
 export function removeFromQueueState(id) {

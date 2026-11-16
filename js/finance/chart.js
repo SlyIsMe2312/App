@@ -2,6 +2,12 @@ import { palette } from './config.js';
 import { state } from './state.js';
 import { toLocalDateStr, formatCurrency } from './helpers.js';
 
+const COLLAPSIBLE_DAILY_TRANSACTION_GROUPS = false;
+
+function getDailyDatasetKey(type, description, date) {
+    return encodeURIComponent(JSON.stringify([type, description, date])).replace(/'/g, '%27');
+}
+
 export function renderChartAndSidebar(weekDates) {
     const incomeByDesc = {};
     const transferByDesc = {};
@@ -37,7 +43,7 @@ export function renderChartAndSidebar(weekDates) {
         
         // Calculate Income
         Object.keys(incomeByDesc).forEach(desc => {
-            if (!state.hiddenDatasets.has(`Income: ${desc}`)) {
+            if (!state.hiddenDatasets.has(getDailyDatasetKey('Income', desc, date))) {
                 const amt = incomeByDesc[desc][date] || 0;
                 net += amt;
                 if (state.activeDates.has(date)) totalIncome += amt;
@@ -46,7 +52,7 @@ export function renderChartAndSidebar(weekDates) {
 
         // Calculate Expenses
         Object.keys(expensesByDesc).forEach(desc => {
-            if (!state.hiddenDatasets.has(`Expense: ${desc}`)) {
+            if (!state.hiddenDatasets.has(getDailyDatasetKey('Expense', desc, date))) {
                 const amt = expensesByDesc[desc][date] || 0;
                 net -= amt;
                 if (state.activeDates.has(date)) totalExpense += amt;
@@ -55,7 +61,7 @@ export function renderChartAndSidebar(weekDates) {
 
         // Calculate Transfers
         Object.keys(transferByDesc).forEach(desc => {
-            if (!state.hiddenDatasets.has(`Transfer: ${desc}`)) {
+            if (!state.hiddenDatasets.has(getDailyDatasetKey('Transfer', desc, date))) {
                 const amt = transferByDesc[desc][date] || 0;
                 if (state.activeDates.has(date)) totalTransfer += amt;
             }
@@ -117,12 +123,15 @@ export function renderChartAndSidebar(weekDates) {
             displayLabel: desc,
             categoryType: 'Expense',
             stack: 'expense_stack',
-            data: visibleDates.map(d => d ? (expensesByDesc[desc][d] || 0) : 0),
+            data: visibleDates.map(d => d && !state.hiddenDatasets.has(getDailyDatasetKey('Expense', desc, d))
+                ? (expensesByDesc[desc][d] ?? null)
+                : null),
             backgroundColor: color,
             borderColor: color.replace('0.85', '1'),
             borderWidth: 1,
             borderRadius: 2,
-            hidden: state.hiddenDatasets.has(fullKey)
+            skipNull: true,
+            hidden: false
         });
     });
 
@@ -135,12 +144,15 @@ export function renderChartAndSidebar(weekDates) {
             displayLabel: desc,
             categoryType: 'Income',
             stack: 'income_stack',
-            data: visibleDates.map(d => d ? (incomeByDesc[desc][d] || 0) : 0),
+            data: visibleDates.map(d => d && !state.hiddenDatasets.has(getDailyDatasetKey('Income', desc, d))
+                ? (incomeByDesc[desc][d] ?? null)
+                : null),
             backgroundColor: color,
             borderColor: color.replace('0.85', '1'),
             borderWidth: 1,
             borderRadius: 2,
-            hidden: state.hiddenDatasets.has(fullKey)
+            skipNull: true,
+            hidden: false
         });
     });
 
@@ -153,12 +165,15 @@ export function renderChartAndSidebar(weekDates) {
             displayLabel: desc,
             categoryType: 'Transfer',
             stack: 'transfer_stack',
-            data: visibleDates.map(d => d ? (transferByDesc[desc][d] || 0) : 0),
+            data: visibleDates.map(d => d && !state.hiddenDatasets.has(getDailyDatasetKey('Transfer', desc, d))
+                ? (transferByDesc[desc][d] ?? null)
+                : null),
             backgroundColor: color,
             borderColor: color.replace('0.85', '1'),
             borderWidth: 1,
             borderRadius: 2,
-            hidden: state.hiddenDatasets.has(fullKey)
+            skipNull: true,
+            hidden: false
         });
     });
 
@@ -166,20 +181,20 @@ export function renderChartAndSidebar(weekDates) {
     if (masterContainer) {
         let masterHtml = '';
         const groupConfigs = {
-            Expense: { name: 'All Expenses', items: expenseKeys.map(k => `Expense: ${k}`), activeStyle: 'bg-rose-900/40 border-rose-600/50 text-rose-200', inactiveStyle: 'bg-rose-950/30 border-rose-900/30 opacity-40 text-gray-400', accentColor: 'text-rose-400', checkboxAccent: 'accent-rose-500' },
-            Income: { name: 'All Income', items: incomeKeys.map(k => `Income: ${k}`), activeStyle: 'bg-emerald-900/40 border-emerald-600/50 text-emerald-200', inactiveStyle: 'bg-emerald-950/30 border-emerald-900/30 opacity-40 text-gray-400', accentColor: 'text-emerald-400', checkboxAccent: 'accent-emerald-500' },
-            Transfer: { name: 'All Transfers', items: transferKeys.map(k => `Transfer: ${k}`), activeStyle: 'bg-blue-900/40 border-blue-600/50 text-blue-200', inactiveStyle: 'bg-blue-950/30 border-blue-900/30 opacity-40 text-gray-400', accentColor: 'text-blue-400', checkboxAccent: 'accent-blue-500' }
+            Expense: { name: 'All Expenses', items: expenseKeys.flatMap(desc => Object.keys(expensesByDesc[desc]).map(date => getDailyDatasetKey('Expense', desc, date))), activeStyle: 'bg-rose-900/40 border-rose-600/50 text-rose-200', inactiveStyle: 'bg-rose-950/30 border-rose-900/30 opacity-40 text-gray-400', accentColor: 'text-rose-400', checkboxAccent: 'accent-rose-500' },
+            Income: { name: 'All Income', items: incomeKeys.flatMap(desc => Object.keys(incomeByDesc[desc]).map(date => getDailyDatasetKey('Income', desc, date))), activeStyle: 'bg-emerald-900/40 border-emerald-600/50 text-emerald-200', inactiveStyle: 'bg-emerald-950/30 border-emerald-900/30 opacity-40 text-gray-400', accentColor: 'text-emerald-400', checkboxAccent: 'accent-emerald-500' },
+            Transfer: { name: 'All Transfers', items: transferKeys.flatMap(desc => Object.keys(transferByDesc[desc]).map(date => getDailyDatasetKey('Transfer', desc, date))), activeStyle: 'bg-blue-900/40 border-blue-600/50 text-blue-200', inactiveStyle: 'bg-blue-950/30 border-blue-900/30 opacity-40 text-gray-400', accentColor: 'text-blue-400', checkboxAccent: 'accent-blue-500' }
         };
 
         Object.keys(groupConfigs).forEach(type => {
             const config = groupConfigs[type];
             if (config.items.length >= 1) {
                 const areAllHidden = config.items.every(k => state.hiddenDatasets.has(k));
-                const jsonStr = JSON.stringify(config.items).replace(/"/g, '&quot;');
+                const encodedItems = encodeURIComponent(JSON.stringify(config.items));
                 const currentStyle = !areAllHidden ? config.activeStyle : config.inactiveStyle;
 
                 masterHtml += `
-                    <div onclick="toggleGroup(${jsonStr})" 
+                    <button type="button" data-toggle-group="${encodedItems}"
                          class="flex justify-between items-center p-2 rounded cursor-pointer border transition-colors ${currentStyle}">
                         <div class="flex items-center space-x-2">
                             <input type="checkbox" ${!areAllHidden ? 'checked' : ''} class="pointer-events-none ${config.checkboxAccent} rounded">
@@ -188,7 +203,7 @@ export function renderChartAndSidebar(weekDates) {
                         <span class="text-[10px] uppercase font-bold ${!areAllHidden ? config.accentColor : 'text-gray-500'}">
                             ${!areAllHidden ? 'On' : 'Off'}
                         </span>
-                    </div>
+                    </button>
                 `;
             }
         });
@@ -197,20 +212,55 @@ export function renderChartAndSidebar(weekDates) {
 
     const legendsContainer = document.getElementById('expense-legends-list');
     if (legendsContainer) {
-        if (datasets.length === 0) {
+        const categoryByTypeAndDescription = {
+            Expense: expensesByDesc,
+            Income: incomeByDesc,
+            Transfer: transferByDesc
+        };
+        const categoriesByDay = weekDates.map(date => ({
+            date,
+            categories: datasets.filter(dataset => Object.hasOwn(categoryByTypeAndDescription[dataset.categoryType][dataset.displayLabel], date))
+        })).filter(day => day.categories.length > 0);
+
+        if (categoriesByDay.length === 0) {
             legendsContainer.innerHTML = `<p class="text-xs text-gray-500 italic p-1 col-span-full">No transactions recorded this week.</p>`;
         } else {
-            legendsContainer.innerHTML = datasets.reverse().map(ds => {
-                const isHidden = state.hiddenDatasets.has(ds.label);
+            legendsContainer.innerHTML = categoriesByDay.map(({ date, categories }) => {
+                const dateObj = new Date(`${date}T00:00:00`);
+                const dayLabel = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+                const transactionCount = state.rawTxs.filter(tx => toLocalDateStr(tx.transaction_date) === date).length;
+                const categoryControls = [...categories].reverse().map(dataset => {
+                    const key = getDailyDatasetKey(dataset.categoryType, dataset.displayLabel, date);
+                    const isHidden = state.hiddenDatasets.has(key);
+                    const label = `${dataset.categoryType}: ${dataset.displayLabel}`;
+                    const safeLabel = label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                    return `
+                        <button type="button" data-toggle-dataset="${key}"
+                             class="flex items-center justify-between p-1.5 rounded text-xs cursor-pointer select-none border transition-colors ${isHidden ? 'bg-gray-800/30 border-transparent opacity-40' : 'bg-gray-700/40 border-gray-600/40 text-gray-200'}">
+                            <span class="flex items-center space-x-2 truncate">
+                                <span class="w-2.5 h-2.5 rounded-sm inline-block flex-shrink-0" style="background-color: ${dataset.backgroundColor}"></span>
+                                <span class="truncate" title="${safeLabel}">${safeLabel}</span>
+                            </span>
+                            <span class="text-[10px] uppercase font-bold ml-2 ${isHidden ? 'text-gray-500' : 'text-teal-400'}">${isHidden ? 'Off' : 'On'}</span>
+                        </button>
+                    `;
+                }).join('');
+                const heading = `${dayLabel} <span class="font-normal text-gray-500">(${transactionCount} transactions)</span>`;
+                const controls = `<div class="mt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">${categoryControls}</div>`;
+                if (COLLAPSIBLE_DAILY_TRANSACTION_GROUPS) {
+                    return `
+                        <details open class="col-span-full rounded border border-gray-700/50 bg-gray-800/30 p-2">
+                            <summary class="cursor-pointer text-xs font-semibold text-gray-300">${heading}</summary>
+                            ${controls}
+                        </details>
+                    `;
+                }
+
                 return `
-                    <div onclick="toggleDataset('${ds.label}')" 
-                         class="flex items-center justify-between p-1.5 rounded text-xs cursor-pointer select-none border transition-colors ${isHidden ? 'bg-gray-800/30 border-transparent opacity-40' : 'bg-gray-700/40 border-gray-600/40 text-gray-200'}">
-                        <div class="flex items-center space-x-2 truncate">
-                            <span class="w-2.5 h-2.5 rounded-sm inline-block flex-shrink-0" style="background-color: ${ds.backgroundColor}"></span>
-                            <span class="truncate" title="${ds.label}">${ds.displayLabel}</span>
-                        </div>
-                        <span class="text-[10px] uppercase font-bold ml-2 ${isHidden ? 'text-gray-500' : 'text-teal-400'}">${isHidden ? 'Off' : 'On'}</span>
-                    </div>
+                    <section class="col-span-full rounded border border-gray-700/50 bg-gray-800/30 p-2">
+                        <h3 class="text-xs font-semibold text-gray-300">${heading}</h3>
+                        ${controls}
+                    </section>
                 `;
             }).join('');
         }
